@@ -1,0 +1,102 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <script>
+        window.onload = function () {
+
+            var getJSON = function (url, callback) {
+                var xhr = new XMLHttpRequest();
+                xhr.open('GET', url, true);
+                xhr.responseType = 'json';
+                xhr.onload = function () {
+                    var status = xhr.status;
+                    if (status === 200) {
+                        callback(null, xhr.response);
+                    } else {
+                        callback(status, xhr.response);
+                    }
+                };
+                xhr.send();
+            };
+
+            var chart = new CanvasJS.Chart("chartContainer", {
+                exportEnabled: true,
+                title: {
+                    text: "Kata"
+                },
+                axisY: {
+                    title: "Jumlah"
+                },
+                dataPointWidth: 10,
+                data: [{
+                    dataPoints: [
+                        {label: "3g", y: 0},
+                        {label: "4g", y: 0},
+                        {label: "edge", y: 0},
+                        {label: "ganggu", y: 0},
+                        {label: "gsm", y: 0},
+                        {label: "hsdpa", y: 0},
+                        {label: "jaring", y: 0},
+                        {label: "koneksi", y: 0},
+                        {label: "lambat", y: 0},
+                        {label: "lelet", y: 0},
+                        {label: "lemot", y: 0},
+                        {label: "lola", y: 0}
+                    ]
+                }]
+            });
+            var keys = [];
+            var kata=[];
+            var jkata;
+            var jtweets;
+
+            function updateChart() {
+                getJSON('https://nlp-tweet.herokuapp.com/data',
+                        function (err, data) {
+                            kata = data;
+                            keys = Object.keys(kata);
+                        });
+                getJSON('https://nlp-tweet.herokuapp.com/jtweets',
+                        function (err, data) {
+                            jtweets = data;
+                        });
+                document.getElementById('jtweets').innerHTML = jtweets;
+                getJSON('https://nlp-tweet.herokuapp.com/jkata',
+                        function (err, data) {
+                            jkata = data;
+                        });
+                document.getElementById('jkata').innerHTML = jkata;
+                var dps = chart.options.data[0].dataPoints;
+                var yVal;
+                for (var i in keys){
+                    yVal = kata[keys[i]];
+                    dps[i]={label: keys[i], y:yVal};
+                }
+
+                chart.options.data[0].dataPoints = dps;
+                chart.render();
+
+                chart.set("dataPointWidth", Math.ceil(chart.axisX[0].bounds.width / chart.data[0].dataPoints.length), true);
+
+                //On Resize chart width changes so as the plotArea, so dataPointWidth will vary according to width
+                $(window).resize(function () {
+                    chart.set("dataPointWidth", Math.ceil(chart.axisX[0].bounds.width / chart.data[0].dataPoints.length), true);
+                });
+            }
+
+            updateChart();
+
+            setInterval(function () {
+                updateChart()
+            }, 5000);
+        }
+    </script>
+</head>
+<body>
+<div id="chartContainer" style="height: 370px; width: 100%;"></div>
+<div>Jumlah tweets:<div id="jtweets"></div></div>
+<div>Jumlah kata:<div id="jkata"></div></div>
+<script src="https://canvasjs.com/assets/script/canvasjs.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+</body>
+</html>
