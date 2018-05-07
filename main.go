@@ -10,6 +10,7 @@ import (
 	"golang.org/x/net/context"
 	"cloud.google.com/go/firestore"
 	"github.com/gin-contrib/cors"
+	"google.golang.org/api/iterator"
 )
 
 func main() {
@@ -51,6 +52,16 @@ func main() {
 
 		c.JSON(http.StatusOK, data)
 	})
+	router.GET("/all", func(c *gin.Context) {
+		data := getAll(ctx, client)
+		c.JSON(200, data)
+	})
+
+	router.GET("/last", func(c *gin.Context) {
+		data := getLast(ctx, client)
+		c.JSON(200, data)
+	})
+
 	router.GET("/jtweets", func(c *gin.Context) {
 		data := getJtweets(ctx, client)
 		c.JSON(http.StatusOK, data)
@@ -61,8 +72,8 @@ func main() {
 		c.JSON(http.StatusOK, data)
 	})
 
-	router.GET("/index",func(c *gin.Context) {
-		c.HTML(200,"index.html","")
+	router.GET("/index", func(c *gin.Context) {
+		c.HTML(200, "index.html", "")
 	})
 
 	//Run
@@ -78,15 +89,60 @@ func getKata(ctx context.Context, client *firestore.Client) (map[string]interfac
 	return ref.Data(), err
 }
 
+func getLast(ctx context.Context, client *firestore.Client) map[string]interface{} {
+	ref, err := client.Collection("lasttweet").Doc("last").Get(ctx)
+	if err != nil {
+		log.Printf("Failed: %v", err)
+	}
+
+	last, err := ref.DataAt("ref")
+	if err != nil {
+		log.Printf("Failed: %v", err)
+	}
+
+	lastref := last.(*firestore.DocumentRef)
+
+	dataref, err := lastref.Get(ctx)
+	if err != nil {
+		log.Printf("Failed: %v", err)
+	}
+
+	data := dataref.Data()
+
+	return data
+}
+
 func getJtweets(ctx context.Context, client *firestore.Client) interface{} {
 	ref, err := client.Collection("lasttweet").Doc("tweet").Get(ctx)
 	if err != nil {
 		log.Printf("Failed: %v", err)
 	}
 
-	j, err:=ref.DataAt("total")
+	j, err := ref.DataAt("total")
 	if err != nil {
 		log.Printf("Failed: %v", err)
+	}
+
+	return j
+}
+
+func getAll(ctx context.Context, client *firestore.Client) map[string]interface{} {
+	iter := client.Collection("Tweet").Documents(ctx)
+	type data struct {
+		username string `json:"username"`
+		text     string `json:"text"`
+		time     string `json:"time"`
+	}
+	j := make(map[string]interface{})
+	for {
+		doc, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			log.Printf("Failed to iterate: %v", err)
+		}
+		j[doc.Ref.ID] = doc.Data()
 	}
 
 	return j
@@ -98,7 +154,7 @@ func getJKata(ctx context.Context, client *firestore.Client) interface{} {
 		log.Printf("Failed: %v", err)
 	}
 
-	j, err:=ref.DataAt("total")
+	j, err := ref.DataAt("total")
 	if err != nil {
 		log.Printf("Failed: %v", err)
 	}
